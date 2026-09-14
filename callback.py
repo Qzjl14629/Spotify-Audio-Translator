@@ -9,15 +9,15 @@ from urllib.parse import urlencode
 import requests
 
 from pkce import generate_pkce_pair
+from config import CLIENT_ID, REDIRECT_URI
 
-from script import CLIENT_ID, REDIRECT_URI, SCOPES
-
+SCOPES = "user-read-email user-read-playback-state user-modify-playback-state " \
+"user-read-currently-playing"
 authResponse = {}
 
 #object to pass into the http server
 class CallbackHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        print("raw callback path", self.path)
         #breaks the callback path down into a dictionary
         splitPath = urlparse(self.path)
         getQuery = splitPath.query
@@ -25,13 +25,17 @@ class CallbackHandler(BaseHTTPRequestHandler):
 
         authResponse["code"] = query.get("code", [None])[0]
         authResponse["state"] = query.get("state", [None])[0]
+        authResponse["error"] = query.get("error", [None])[0] #if user does not give access or something
 
         #letting browser know request was successful
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
 
-        self.wfile.write(b"Login successful. Close this tab.")
+        if authResponse["error"]:
+            self.wfile.write(b"Login failed or was cancelled. Close this tab")
+        else:
+            self.wfile.write(b"Login successful. Close this tab.")
 
     def log_message(self, format, *args):
         pass
@@ -41,7 +45,6 @@ class CallbackHandler(BaseHTTPRequestHandler):
 
 #redirects u to login to ur spotify account
 def login_url():
-    print("is success?")
     verifier, challenge = generate_pkce_pair()
     state = secrets.token_urlsafe(16)
 

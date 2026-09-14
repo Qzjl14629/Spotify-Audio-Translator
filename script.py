@@ -7,17 +7,11 @@ import openwakeword
 from openwakeword import Model
 import numpy as np
 import requests
-import os
-from dotenv import load_dotenv
 import whisper
 import time
 from spotify import spotify_command
-load_dotenv()
 
-CLIENT_ID = os.getenv('CLIENT_ID')
-REDIRECT_URI = os.getenv("REDIRECT_URI")
-SCOPES = "user-read-email user-read-playback-state user-modify-playback-state " \
-"user-read-currently-playing"
+
 
 
 #first step is to get the access token
@@ -43,7 +37,7 @@ mic_stream = audio.open(format = FORMAT, channels = 1, rate = RATE, input = True
 
 
 #record until silence, or when certain amount of time has passed, turn result into value passable into whisper
-def record_command(mic_stream, chunk = CHUNK, rate = RATE, silence_threshold = 500, silence_duration = 1.5, max_duration = 4.5):
+def record_command(mic_stream, chunk = CHUNK, rate = RATE, silence_threshold = 500, silence_duration = 1.5, max_duration = 2.5):
     print("speak")
     frames = [] #what will be passed into whisper
     silence_start = None
