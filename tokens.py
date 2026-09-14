@@ -7,8 +7,8 @@ import os
 # from dotenv import load_dotenv
 
 from callback import login_url, CallbackHandler, authResponse, code_for_token
-from script import CLIENT_ID
-
+from spotify_client import make_request
+from config import CLIENT_ID, REDIRECT_URI
 
 cache_file = "tokens.json"
 
@@ -52,10 +52,9 @@ def get_access_token():
     verifier, state, url = login_url()
     server = HTTPServer(("127.0.0.1", 8888), CallbackHandler)
     webbrowser.open(url)
-    server.timeout = 30 #10 mins
+    server.timeout = 30 #in seconds
     server.handle_request()
 
-    print("past handle request", authResponse)
     if authResponse.get('code') is None:
         raise TimeoutError("No reponse from spotify login")
 
@@ -72,19 +71,27 @@ def get_access_token():
 #obtains a new access token using the refresh token
 def refresh(refresh_token):
     url = "https://accounts.spotify.com/api/token"
-    response = requests.post(
+    # response = requests.post(
+    #     url,
+    #     data = {
+    #         "grant_type": "refresh_token",
+    #         "refresh_token": refresh_token,
+    #         "client_id": CLIENT_ID
+    #     }
+    #     )
+    # response.raise_for_status()
+    response = make_request(
+        "POST",
         url,
         data = {
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
             "client_id": CLIENT_ID
         }
-        )
-    response.raise_for_status()
+    )
     data = response.json()
     if "refresh_token" not in data: #refresh_token are only sometimes part of the response
         data["refresh_token"] = refresh_token #will pass in data to overwrite the current json file
-    print("in refresh", data)
     return data
 
 
