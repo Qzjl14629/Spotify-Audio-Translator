@@ -14,7 +14,7 @@ static_commands = {
     "shuffle on": ("PUT", "https://api.spotify.com/v1/me/player/shuffle?state=true"),
     "shuffle off": ("PUT", "https://api.spotify.com/v1/me/player/shuffle?state=false"),
 
-    "like": (),
+    
 
 }
 '''
@@ -46,29 +46,41 @@ def spotify_command(command, access_token):
 
     if (command == "like"):
         #get current song
-        response = make_request(
-            "GET", "https://api.spotify.com/v1/me/player/currently-playing",
-            headers = auth,
-        )
+        try:
+            response = make_request(
+                "GET", "https://api.spotify.com/v1/me/player/currently-playing",
+                headers = auth,
+            )
+        except SpotifyAPIError as s:
+            print(s)
+            return
+
 
         if response.status_code == 204 or not response.content:
             print("nothing playing")
             return
 
         data = response.json()
-
         item = data.get("item")
         if item is None:
             return
-
         current_song = item["uri"]
-        response = make_request(
-            "POST", "https://api.spotify.com/v1/me/player/currently-playing",
-            headers = auth,
-        )
+
+        #add song to liked songs
+        try:
+            like_song_res = make_request(
+                "PUT", "https://api.spotify.com/v1/me/library",
+                headers = auth,
+                params = {"uris": current_song}
+            )
+        except SpotifyAPIError as s:
+            print(s)
+            return
+        
+        print("added to liked songs")
 
 
-
+#ok this shit buggy as fuck lmao
     if (command.startswith("play ")):
         print("in play ## by @@")
         #and further differentiate by artist, album, track, and playlist (for this probably just do personal or just the liked songs), or instead just have these 4 be the keywords rather than play 
