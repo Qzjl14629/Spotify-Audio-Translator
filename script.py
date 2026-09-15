@@ -37,7 +37,7 @@ mic_stream = audio.open(format = FORMAT, channels = 1, rate = RATE, input = True
 
 
 #record until silence, or when certain amount of time has passed, turn result into value passable into whisper
-def record_command(mic_stream, chunk = CHUNK, rate = RATE, silence_threshold = 500, silence_duration = 1.5, max_duration = 2.5):
+def record_command(mic_stream, chunk = CHUNK, rate = RATE, silence_threshold = 500, silence_duration = 1.5, max_duration = 10):
     print("speak")
     frames = [] #what will be passed into whisper
     silence_start = None
@@ -47,7 +47,17 @@ def record_command(mic_stream, chunk = CHUNK, rate = RATE, silence_threshold = 5
         chunk_data = mic_stream.read(chunk, exception_on_overflow = False)
         frames.append(chunk_data)
 
-        #audio_np = np.frombuffer(chunk_data, dtype=np.int16)
+        audio_np = np.frombuffer(chunk_data, dtype=np.int16)
+        root_mean_square = np.sqrt(np.mean(audio_np.astype(np.float64) ** 2))
+
+        if (root_mean_square < silence_threshold):
+            if silence_start == None:
+                silence_start = time.time()
+
+            if (silence_start + silence_duration < time.time()):
+                break
+        else:
+            silence_start = None
 
 
         if (start_time + max_duration < time.time()):
@@ -65,7 +75,7 @@ if __name__ == "__main__":
     whisper_model = whisper.load_model("base")
 
 
-    access_token = get_access_token()
+   
 
     print("Listening for wakeword...")
     while True:
@@ -75,6 +85,8 @@ if __name__ == "__main__":
 
         if prediction["hey_jarvis"] > 0.5:
             if not wake_word_active:
+                access_token = get_access_token()
+
                 wake_word_active = True
                 print("Wake word detected")
                 #get transcript, and then pass into spotify command to make api call
