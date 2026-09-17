@@ -12,7 +12,7 @@ from pkce import generate_pkce_pair
 from config import CLIENT_ID, REDIRECT_URI
 
 SCOPES = "user-read-playback-state user-modify-playback-state " \
-"user-read-currently-playing user-library-modify"
+"user-read-currently-playing user-library-modify playlist-read-private user-library-read"
 authResponse = {}
 
 #object to pass into the http server

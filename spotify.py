@@ -12,9 +12,7 @@ static_commands = {
     "skip": ("POST", "https://api.spotify.com/v1/me/player/next"),
     "previous": ("POST", "https://api.spotify.com/v1/me/player/previous"),
     "shuffle on": ("PUT", "https://api.spotify.com/v1/me/player/shuffle?state=true"),
-    "shuffle off": ("PUT", "https://api.spotify.com/v1/me/player/shuffle?state=false"),
-
-    
+    "shuffle off": ("PUT", "https://api.spotify.com/v1/me/player/shuffle?state=false"), 
 
 }
 '''
@@ -30,8 +28,8 @@ library (plays liked songs, easier to say)
 def spotify_command(command, access_token):
     auth = {"Authorization": f"Bearer {access_token}"}
     message = ""
-    command = command = command.strip().lower().rstrip(".")
-
+    command = (command.strip().lower().rstrip(".")).replace(",","")
+    print(f"command stripped:{command}")
     if command == "":
         return "Nothing picked up"
 
@@ -83,38 +81,112 @@ def spotify_command(command, access_token):
 #ok this shit buggy as fuck lmao
     if (command.startswith("play ")):
         print("in play ## by @@")
-        #and further differentiate by artist, album, track, and playlist (for this probably just do personal or just the liked songs), or instead just have these 4 be the keywords rather than play 
-        method, play_url = static_commands.get("play")
-        type = "track"
-        search_by = command[len("play "):]
-        search_url = f"https://api.spotify.com/v1/search?q={search_by}&type={type}&limit=1&offset=0&include_external=audio"
-        data = {}
+        play_method, play_url = static_commands.get("play")
+    
+        type = "track" #default to track if user says "play {name}"
+        after_play = command[len("play "):]
+        search_by = after_play
 
-        try:
-            #buggy with slightly unknown songs, do something later about {song} by {artist} later
-            res = make_request("GET", search_url, headers = auth) #search first for the uri (contexturi is for albums, albums, playlists), which will then be passed into play
-            get_search = res.json()[f"{type}s"]["items"][0]["uri"]
+        #and further differentiate by artist, album, track, and playlist (for this probably just do personal or just the liked songs), 
+        # or instead just have these 4 be the keywords rather than play, if not, just assume track type
+        for t in ("track ", "album ", "artist ", "playlist "):
+            if after_play.startswith(t):
+                type = t.strip()
+                search_by = search_by[len(t):]
+                break
+        print(search_by)
+        if (type == "artist" or type == "playlist"): #apparently having the scope in q as well for artist makes it less accurate
+            data = {"market": "US", "type": type, "limit": 1, "offset": 0, "q": f"{search_by}"}
+        else:
+            data = {"market": "US", "type": type, "limit": 1, "offset": 0, "q": f"{type}:{search_by}"}
+        
+        search_url = f"https://api.spotify.com/v1/search"
+        
+        try:            
+            res = make_request("GET", search_url, headers = auth, params = data) 
+
+            items = res.json()[f"{type}s"]["items"]
+            
+            if items == [None] or items == []:
+                print('not found')
+                return
+            get_search = items[0]["uri"]
+
             print(get_search)
+
+            if type == 'track':
+                play_param = {"uris": [get_search]}
+            else:
+                play_param = {"context_uri": get_search}
             # data["uris"] = [uri]
 
             #get search contains the uri for the song, so that can be used as the search param
-
+            response = make_request(play_method, play_url,headers = auth,json = play_param)
             
         except SpotifyAPIError as s:
             print(f"Status Error {s.status_code}: {s.message}")
 
 
+#bottom 2 need to be tested
+    if (command == ("playlist like")): #liked songs
+        play_method, play_url = static_commands.get("play")
+
+        saved_url = "https://api.spotify.com/v1/me/tracks"
+
+        try:
+            res = make_request("GET", saved_url, header = auth, params = {'limit': 50})
+        except SpotifyAPIError as s:
+            return
+
+        data = res.json()
+
+        uris = [item["track"['uri']] for item in data[:50]]
+
+        try:
+            make_request(play_method, play_url, header = auth, json = uris)
+        except SpotifyAPIError as s:
+            print(s)
+            return
+
+    #ok this one will juat be for playlists i own or follow ig
+    if (command.startswith("playlist ")):
+        playlist_name = command[len("playlist "):]
+
+        url = "https://api.spotify.com/v1/me/playlists" #for playlists a user follows (owning automatically means following)
+        my_playlists = []
+        params = {'limit': 50}
+
+        while url:
+            try:
+                res = make_request("GET", url, headers = auth, params = params)
+            except SpotifyAPIError as s:
+                print(s)
+                break #possible that some playlists were alr retreived so break instead of return
+            data = res.json()
+            my_playlists.extend(data["items"])
+            url = data.get("next")
+            params = None
+
+        playlisturi = None
+        for p in my_playlists:
+            if playlist_name == p["name"]:
+                playlisturi = p['uri']
+
+        if playlisturi is None:
+            print("playlist not found")
+            return
+
+        play_method, play_url = static_commands.get("play")
+
+        try:
+            res = make_request(play_method, play_url, headers = auth, json = {'context_uri': playlisturi})
+        except SpotifyAPIError as s:
+            print(s)
+            return
+
+        
     
 
 
-
-
-    #playlist-modify-private
-    #want one for add to queue too, plus one to add to liked songs
-    if (command.startswith("add ")):
-        next
-    if (command.startswith("like")):
-        next
-        
 
     
