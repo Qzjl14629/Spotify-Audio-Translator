@@ -134,16 +134,16 @@ def spotify_command(command, access_token):
         saved_url = "https://api.spotify.com/v1/me/tracks"
 
         try:
-            res = make_request("GET", saved_url, header = auth, params = {'limit': 50})
+            res = make_request("GET", saved_url, headers = auth, params = {'limit': 50})
         except SpotifyAPIError as s:
             return
 
         data = res.json()
 
-        uris = [item["track"['uri']] for item in data[:50]]
+        uris = [item["track"]['uri'] for item in data['items']]
 
         try:
-            make_request(play_method, play_url, header = auth, json = uris)
+            make_request(play_method, play_url, headers = auth, json = {"uris": uris})
         except SpotifyAPIError as s:
             print(s)
             return
@@ -169,7 +169,7 @@ def spotify_command(command, access_token):
 
         playlisturi = None
         for p in my_playlists:
-            if playlist_name == p["name"]:
+            if playlist_name == p["name"].lower().replace("-", ""):
                 playlisturi = p['uri']
 
         if playlisturi is None:

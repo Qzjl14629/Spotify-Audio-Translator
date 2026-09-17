@@ -73,7 +73,7 @@ if __name__ == "__main__":
     print("Loading models...............")
     oww_model = Model(wakeword_models=["hey_jarvis"], inference_framework=INFERENCE_FRAMEWORK)
     whisper_model = whisper.load_model("base")
-
+    access_token = get_access_token() #here too cause first script startup to login
 
    
 
